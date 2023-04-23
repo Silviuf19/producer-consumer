@@ -31,7 +31,9 @@ Test 10:		PASSED
 
 Run pylint
 
+************* Module marketplace
+tema/marketplace.py:16:0: E0401: Unable to import 'tema.product' (import-error)
 
---------------------------------------------------------------------
-Your code has been rated at 10.00/10 (previous run: 10.00/10, +0.00)
+-------------------------------------------------------------------
+Your code has been rated at 9.73/10 (previous run: 10.00/10, -0.27)
 
