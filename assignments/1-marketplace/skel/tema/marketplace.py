@@ -61,15 +61,21 @@ class Marketplace:
         :returns True or False. If the caller receives False, it should wait and then try again.
         """
         self.logger.info("Producer %s started to publish product %s", producer_id, product.name)
+
+        # Queue is full
         if self.producer_queue_size[producer_id] >= self.queue_size_per_producer:
             self.logger.warning("Producer %s has its queue full", producer_id)
             return False
 
+        # If product is not in the marketplace it is initialized else it is added to the
+        # list of producers that have the product
         if product.name not in self.product_pool:
             self.product_pool[product.name] =(product, [producer_id])
         else:
             self.product_pool[product.name][1].append(producer_id)
         with self.lock_modify_sizes[producer_id]:
+
+            # Increment the size of the queue of the producer
             self.producer_queue_size[producer_id] += 1
             self.logger.info("Producer %s published product %s", producer_id, product.name)
         return True
@@ -81,7 +87,11 @@ class Marketplace:
         :returns an int representing the cart_id
         """
         self.logger.info("Consumer started to create a new cart")
+
+        # Generate id for the cart
         cart_id = int(uuid.uuid4())
+
+        # Initialize the cart
         self.cart_list[cart_id] = {}
         self.logger.info("Consumer created a new cart")
         return cart_id
@@ -99,14 +109,17 @@ class Marketplace:
         :returns True or False. If the caller receives False, it should wait and then try again
         """
         self.logger.info("Consumer started to add product %s to cart %s", product.name, cart_id)
+        # If product is not in the marketplace
         if product.name not in self.product_pool or len(self.product_pool[product.name][1]) == 0:
             self.logger.warning("Product %s is not in the marketplace", product.name)
             return False
 
+        # Remove the producer_id from the pool and decrement the size of the queue of the producer
         producer_id = self.product_pool[product.name][1].pop()
         with self.lock_modify_sizes[producer_id]:
             self.producer_queue_size[producer_id] -= 1
 
+        # Add the producer_id to the cart
         if product.name not in self.cart_list[cart_id]:
             self.cart_list[cart_id][product.name] = (product, [producer_id])
         else:
@@ -126,9 +139,13 @@ class Marketplace:
         """
         self.logger.info("Consumer started to remove product %s from cart %s",
                         product.name, cart_id)
+
+        # Remove the product from the cart and increment the size of the queue of the producer
         producer_id = self.cart_list[cart_id][product.name][1].pop()
         with self.lock_modify_sizes[producer_id]:
             self.producer_queue_size[producer_id] += 1
+
+        # Add the producer_id to the pool
         self.product_pool[product.name][1].append(producer_id)
         self.logger.info("Consumer removed product %s from cart %s", product.name, cart_id)
 
@@ -141,6 +158,8 @@ class Marketplace:
         """
         self.logger.info("Consumer started to place order for cart %s", cart_id)
         cart_products = []
+
+        # Get all the products in the cart
         for (_,(product_cart, producer_id_list)) in self.cart_list[cart_id].items():
             for _ in producer_id_list:
                 cart_products.append(product_cart)
